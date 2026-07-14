@@ -241,6 +241,15 @@ async function switchToDesktop() {
 async function switchToPassthrough() {
     if (state.mode === 'passthrough') return;
     if (!state.isXR) {
+        if (!navigator.xr) {
+            console.warn('[App] WebXR not available');
+            return;
+        }
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!supported) {
+            console.warn('[App] Passthrough (immersive-ar) not supported on this device');
+            return;
+        }
         pendingXRMode = 'passthrough';
         enterXrBtn.classList.remove('hidden');
         enterXrBtn.textContent = '📷 Enter Passthrough';
@@ -252,6 +261,15 @@ async function switchToPassthrough() {
 async function switchToVR() {
     if (state.mode === 'vr') return;
     if (!state.isXR) {
+        if (!navigator.xr) {
+            console.warn('[App] WebXR not available');
+            return;
+        }
+        const supported = await navigator.xr.isSessionSupported('immersive-vr');
+        if (!supported) {
+            console.warn('[App] VR (immersive-vr) not supported on this device');
+            return;
+        }
         pendingXRMode = 'vr';
         enterXrBtn.classList.remove('hidden');
         enterXrBtn.textContent = '🥽 Enter VR';
@@ -296,15 +314,9 @@ startBtn.addEventListener('click', async () => {
         infoEl.classList.remove('hidden');
         controls.enabled = true;
 
+        // Log XR support but keep buttons visible; clicking checks support on-demand
         const support = await xrManager.getSupport();
-        if (support.ar || support.vr) {
-            console.log(`[App] XR: AR=${support.ar}, VR=${support.vr}`);
-            if (!support.ar) modePassthrough.style.display = 'none';
-            if (!support.vr) modeVr.style.display = 'none';
-        } else {
-            modePassthrough.style.display = 'none';
-            modeVr.style.display = 'none';
-        }
+        console.log(`[App] XR support - AR: ${support.ar}, VR: ${support.vr}`);
 
         state.running = true;
         startDesktopLoop();

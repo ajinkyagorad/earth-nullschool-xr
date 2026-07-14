@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>earth :: XR Global Wind & Weather</title>
+    <meta name="description" content="an animated map of global wind and weather in WebXR"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000005;
+            font-family: Helvetica, Arial, sans-serif;
+            color: #eee;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+        #info.hidden {
+            opacity: 0;
+        }
+        #start-btn {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            background: #e2b42e;
+            color: #000;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: all;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #start-btn:hover {
+            background: #f0c440;
+            transform: translateX(-50%) scale(1.05);
+        }
+        #start-btn:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+        #start-btn.hidden {
+            display: none;
+        }
+        #xr-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        #xr-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* In-session HUD overlay */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        #hud > * {
+            pointer-events: auto;
+        }
+        #mode-toggle {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(0,0,0,0.5);
+            padding: 6px;
+            border-radius: 24px;
+        }
+        #mode-toggle button {
+            background: transparent;
+            color: #888;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 18px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #mode-toggle button.active {
+            color: #e2b42e;
+            border-color: #e2b42e;
+            background: rgba(226, 180, 46, 0.15);
+        }
+        #mode-toggle button:hover {
+            color: #fff;
+            border-color: #aaa;
+        }
+        #enter-xr {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0,0,0,0.5);
+            color: #e2b42e;
+            border: 1px solid #e2b42e;
+            padding: 8px 14px;
+            border-radius: 18px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        #enter-xr:hover {
+            background: rgba(226, 180, 46, 0.2);
+        }
+        #enter-xr.hidden {
+            display: none;
+        }
+        #stats {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            font-size: 12px;
+            color: #666;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 10px;
+            border-radius: 10px;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            color: #888;
+            z-index: 15;
+            text-align: center;
+        }
+        #loading.hidden {
+            display: none;
+        }
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #444;
+            border-top-color: #e2b42e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* XR only */
+        #xr-hint {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            font-size: 13px;
+            background: rgba(0,0,0,0.4);
+            padding: 6px 14px;
+            border-radius: 14px;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #xr-hint.hidden { opacity: 0; }
+    </style>
+</head>
+<body>
+    <div id="xr-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Loading weather data...</div>
+        </div>
+        <div id="hud">
+            <div id="mode-toggle">
+                <button id="mode-desktop" class="active">🖥 Desktop</button>
+                <button id="mode-passthrough">📷 Passthrough</button>
+                <button id="mode-vr">🥽 VR</button>
+            </div>
+            <button id="enter-xr" class="hidden">Enter XR</button>
+            <div id="stats"></div>
+        </div>
+        <div id="start-btn">Launch Globe</div>
+        <div id="xr-hint" class="hidden">Use grip to rotate • Trigger to select</div>
+        <div id="info" class="hidden">Drag to rotate • Scroll to zoom</div>
+    </div>
+
+    <!-- Three.js and addons from CDN -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

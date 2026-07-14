@@ -179,6 +179,11 @@ function onXRSqueezeEnd(event) {
 function handleModeChange(modeInfo) {
     const { mode, session, error } = modeInfo;
 
+    // Guard against duplicate calls (e.g., sessionend + _onSessionEnd both firing)
+    if (mode === state.mode && (mode === 'desktop') === !state.isXR) {
+        return;
+    }
+
     if (error) {
         console.warn('Mode change error:', error);
         setModeUI('desktop');
@@ -199,6 +204,22 @@ function handleModeChange(modeInfo) {
 
     setModeUI(mode);
     setXrHint(mode);
+
+    // Position globe for XR: float 2m in front, 1.5m up
+    // In XR local-floor space, camera is at user's head (y≈1.6).
+    // Place globe at eye level, 2m forward (-Z).
+    if (state.isXR) {
+        globe.group.position.set(0, 1.6, -2.0);
+        // Start XR animation loop
+        if (renderer.xr.enabled) {
+            renderer.setAnimationLoop(xrFrame);
+        }
+    } else {
+        // Reset globe position for desktop view
+        globe.group.position.set(0, 0, 0);
+        renderer.setAnimationLoop(null);
+        startDesktopLoop();
+    }
 
     console.log(`[App] Switched to mode: ${mode}`);
 }
@@ -424,16 +445,6 @@ function xrFrame(time, frame) {
 // XR Session Setup
 // ============================================================
 
-// Patch the renderer's setAnimationLoop to handle our xrFrame
-const originalSetAnimationLoop = renderer.setAnimationLoop.bind(renderer);
-renderer.setAnimationLoop = (callback) => {
-    if (callback) {
-        originalSetAnimationLoop(xrFrame);
-    } else {
-        originalSetAnimationLoop(null);
-    }
-};
-
 // Listen for XR session start to set up controllers
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('[App] XR session started');
@@ -441,10 +452,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     state.running = true;
 });
 
-renderer.xr.addEventListener('sessionend', () => {
-    console.log('[App] XR session ended');
-    state.running = false;
-});
+// Session end is handled by xr-manager via _onSessionEnd -> handleModeChange
 
 // ============================================================
 // Window Resize

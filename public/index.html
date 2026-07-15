@@ -153,18 +153,8 @@
     <script src="/libs/earth/1.0.0/products.js" charset="utf-8"></script>
     <script src="/libs/earth/1.0.0/earth.js" charset="utf-8"></script>
 
-    <!-- XR: Import map for Three.js (used by xr-bridge) -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
-
-    <!-- XR: Bridge from D3 earth to Three.js/WebXR -->
-    <script src="/xr-bridge.js" charset="utf-8"></script>
+    <!-- XR: Minimal Three.js globe + WebXR (loads Three.js from CDN on demand) -->
+    <script src="/xr-min.js" charset="utf-8"></script>
 
 </body>
 </html>
